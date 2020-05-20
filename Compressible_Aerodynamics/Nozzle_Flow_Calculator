@@ -1,0 +1,83 @@
+%% Nozzle Flow
+clear;clc;
+
+%% Variable Declarations
+gamma   = 1.4;
+epsilon = 2.0;   %Ae/At
+pRatio  = 1.667; %p0/pb
+
+%% Calculations
+
+% Calculate sub_iso_pRatio
+holdError = inf;
+holdMSub = 0;
+holdRHS = 0;
+
+for MSub = 0.0001:0.0001:0.9999
+    LHS = epsilon^2;
+    RHS = (1/MSub^2)*((2/(gamma+1))*(1+(gamma-1)/2*MSub^2))^((gamma+1)/(gamma-1));
+    errorTest = abs(LHS - RHS)/abs(LHS);
+    if errorTest < holdError
+        holdError = errorTest;
+        holdMSub = MSub;
+        holdRHS = RHS;
+    end
+end
+
+sub_iso_pRatio = (1+(gamma-1)/2*holdMSub^2)^(gamma/(gamma-1));
+
+% Calculate sup_iso_pRatio
+holdError = inf;
+holdMSup = 0;
+holdRHS = 0;
+
+for MSup = 0.9999:0.0001:25
+    LHS = epsilon^2;
+    RHS = (1/MSup^2)*((2/(gamma+1))*(1+(gamma-1)/2*MSup^2))^((gamma+1)/(gamma-1));
+    errorTest = abs(LHS - RHS)/abs(LHS);
+    if errorTest < holdError
+        holdError = errorTest;
+        holdMSup = MSup;
+        holdRHS = RHS;
+    end
+end
+
+sup_iso_pRatio = (1+(gamma-1)/2*holdMSup^2)^(gamma/(gamma-1));
+
+% Calculate exit_shock_pRatio
+M1 = holdMSup;
+M2 = sqrt((1+((gamma-1)/2)*M1^2)/(gamma*M1^2-(gamma-1)/2));
+p2p1Ratio = 1 + 2*gamma*(M1^2-1)/(gamma+1);
+exit_shock_pRatio = sup_iso_pRatio/p2p1Ratio;
+
+% Calculate exit_mach
+if round(pRatio, 2) < sub_iso_pRatio
+    state = 'Subsonic Unchoked Flow';
+    Me = sqrt((pRatio^((gamma-1)/gamma)-1)*2/(gamma-1));
+elseif round(pRatio, 2) == round(sub_iso_pRatio, 2)
+    state = 'Subsonic Choked Flow';
+    Me = holdMSub;
+elseif pRatio > sub_iso_pRatio & pRatio < exit_shock_pRatio
+    state = 'Shock in Nozzle';
+    Me = sqrt((1/(gamma-1))*(-1+sqrt(1+2*(gamma-1)*(2/(gamma+1))^((gamma+1)/(gamma-1))*(pRatio/epsilon)^2)));
+elseif round(pRatio, 3) == round(exit_shock_pRatio, 3)
+    state = 'Shock at Nozzle Exit';
+    Me = M2;
+elseif pRatio > exit_shock_pRatio & pRatio < sup_iso_pRatio
+    state = 'Overexpanded Flow';
+    Me = sqrt((pRatio^((gamma-1)/gamma)-1)*2/(gamma-1)); 
+elseif round(pRatio, 3) == round(sup_iso_pRatio, 3)
+    state = 'Perfectly Expanded Flow';
+    Me = holdMSup;
+else
+    state = 'Underexpanded Flow';
+    Me = sqrt((pRatio^((gamma-1)/gamma)-1)*2/(gamma-1));   
+end
+
+%% Output
+fprintf('\nFor Subsonic Isentropic Choked Flow: p0/pb = %.4f and Me = %.4f', sub_iso_pRatio, holdMSub)
+fprintf('\nFor Shock at Nozzle Exit: p0/pb = %.4f and Me = %.4f', exit_shock_pRatio, M2)
+fprintf('\nFor Perfectly Expanded Flow: p0/pb = %.4f and Me = %.4f', sup_iso_pRatio, holdMSup)
+
+fprintf('\n\nAt <strong>p0/pb = %.4f</strong>: State = <strong>%s </strong>and <strong>Me = %.4f</strong>.\n\n', pRatio, state, Me)
+
