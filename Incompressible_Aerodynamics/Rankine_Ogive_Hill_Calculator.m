@@ -1,4 +1,3 @@
-%% AAE 333 Test 2 Problem 2
 
 clear;clf;clf;
 
